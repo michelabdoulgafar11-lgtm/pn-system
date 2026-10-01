@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — Système de Gestion Policière</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-connexion">
+
+<canvas id="fondCode" class="fond-code"></canvas>
+
+<div class="carte-connexion">
+  <div class="accent-drapeau"></div>
+  <div class="ecusson">★</div>
+  <h1>POLICE NATIONALE</h1>
+  <p class="sous-titre">Système de Gestion des Dossiers</p>
+
+  <form id="formConnexion" autocomplete="off">
+    <div class="champ">
+      <label for="identifiant">Identifiant</label>
+      <input type="text" id="identifiant" name="identifiant" required autofocus>
+    </div>
+    <div class="champ">
+      <label for="motDePasse">Mot de passe</label>
+      <input type="password" id="motDePasse" name="motDePasse" required>
+    </div>
+    <p id="messageErreur" class="message-erreur" hidden></p>
+    <button type="submit" class="bouton-principal">Se connecter</button>
+  </form>
+</div>
+
+<script src="/js/effets.js"></script>
+<script>
+demarrerFondCode("fondCode", { opacite: 0.15 });
+
+document.getElementById("formConnexion").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const identifiant = document.getElementById("identifiant").value;
+  const motDePasse = document.getElementById("motDePasse").value;
+  const messageErreur = document.getElementById("messageErreur");
+  messageErreur.hidden = true;
+
+  try {
+    const reponse = await fetch("/api/auth/connexion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifiant, motDePasse })
+    });
+    const donnees = await reponse.json();
+    if (!reponse.ok) {
+      messageErreur.textContent = donnees.erreur || "Erreur de connexion.";
+      messageErreur.hidden = false;
+      return;
+    }
+    window.location.href = "/index.html";
+  } catch (err) {
+    messageErreur.textContent = "Impossible de contacter le serveur.";
+    messageErreur.hidden = false;
+  }
+});
+</script>
+
+</body>
+</html>

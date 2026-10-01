@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Système de Gestion Policière</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+<body>
+
+<canvas id="fondCode" class="fond-code fond-code-app"></canvas>
+
+<div class="mise-en-page" id="mep" hidden>
+  <aside class="barre-laterale">
+    <div class="entete-marque">
+      <div class="ecusson">★</div>
+      <div>
+        <div class="titre">POLICE NATIONALE</div>
+        <div class="sous">Gestion des dossiers</div>
+        <div class="accent-drapeau accent-drapeau-mini"></div>
+      </div>
+    </div>
+    <nav class="menu">
+      <button data-vue="vueTableauBord" class="actif">Tableau de bord</button>
+      <button data-vue="vueAffaires">Affaires</button>
+      <button data-vue="vueAvis">Avis de recherche</button>
+      <button data-vue="vueObjets">Objets volés</button>
+      <button data-vue="vueCarte">Carte</button>
+      <button data-vue="vueSupervision">Supervision caméra</button>
+      <button data-vue="vueReconnaissance">Reconnaissance faciale</button>
+      <button data-vue="vueAssistant">Assistant IA</button>
+      <button data-vue="vuePostes" id="ongletPostes" hidden>Postes / Commissariats</button>
+      <button data-vue="vueUtilisateurs" id="ongletUtilisateurs" hidden>Comptes utilisateurs</button>
+    </nav>
+
+    <div class="bloc-notifications">
+      <button id="btnNotifications" class="bouton-notifications">
+        🔔 Activité <span id="pastilleNotif" class="pastille" hidden>0</span>
+      </button>
+      <div id="panneauNotifications" class="panneau-notifications" hidden></div>
+    </div>
+
+    <div class="bloc-partage-position">
+      <label class="interrupteur-partage">
+        <input type="checkbox" id="togglePartagePosition">
+        <span class="curseur-interrupteur"></span>
+        📍 Partager ma position
+      </label>
+      <div id="statutPartage" class="statut-partage">Position non partagée</div>
+    </div>
+
+    <div class="bloc-partage-position">
+      <label class="interrupteur-partage">
+        <input type="checkbox" id="togglePartageCamera">
+        <span class="curseur-interrupteur"></span>
+        📷 Partager ma caméra
+      </label>
+      <div id="statutCamera" class="statut-partage">Caméra non partagée</div>
+      <video id="apercuCameraLocale" autoplay muted playsinline class="apercu-camera" hidden></video>
+    </div>
+
+    <div class="bloc-partage-position">
+      <label style="font-size:12px;color:var(--texte-att);display:block;margin-bottom:6px;">Rayon de recherche (km)</label>
+      <input type="number" id="rayonAlerte" value="5" min="1" max="50" style="margin-bottom:8px;">
+      <button class="bouton-action" id="btnDeclencherAlerte" style="width:100%;background:rgba(177,70,63,0.2);border-color:var(--rouge);color:#ff9d94;">🚨 Déclencher une alerte</button>
+      <div id="statutAlerte" class="statut-partage"></div>
+    </div>
+
+    <div class="pied-barre">
+      <div class="nom-utilisateur" id="nomUtilisateurAffiche">—</div>
+      <div id="roleAffiche">—</div>
+      <button class="lien-deconnexion" id="btnDeconnexion">Se déconnecter</button>
+    </div>
+  </aside>
+
+  <main class="contenu-principal">
+
+    <!-- TABLEAU DE BORD -->
+    <section class="section-vue actif" id="vueTableauBord">
+      <div class="entete-section">
+        <h1>Salle de contrôle</h1>
+        <p>Vue d'ensemble en temps réel de l'activité des services.</p>
+      </div>
+      <div class="grille-stats" id="grilleStats"></div>
+      <div class="grille-stats" id="grilleStatsAgents"></div>
+
+      <div class="bloc-formulaire">
+        <h3>Rapport PDF automatique</h3>
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label>Période</label>
+            <select id="periodeRapport">
+              <option value="semaine">7 derniers jours</option>
+              <option value="mois">30 derniers jours</option>
+              <option value="tout">Toutes les données</option>
+            </select>
+          </div>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnGenererRapport">📄 Générer le rapport PDF</button>
+      </div>
+
+      <div class="grille-graphiques">
+        <div class="carte-graphique bezel-ecran">
+          <h3>Évolution des affaires (12 derniers mois)</h3>
+          <canvas id="graphiqueEvolution"></canvas>
+        </div>
+        <div class="carte-graphique bezel-ecran">
+          <h3>Affaires par statut</h3>
+          <canvas id="graphiqueStatutAffaires"></canvas>
+        </div>
+        <div class="carte-graphique bezel-ecran">
+          <h3>Affaires par poste</h3>
+          <canvas id="graphiquePostes"></canvas>
+        </div>
+        <div class="carte-graphique bezel-ecran">
+          <h3>Avis de recherche par statut</h3>
+          <canvas id="graphiqueAvis"></canvas>
+        </div>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Flux d'activité récent</h3>
+        <div id="flotActivite"></div>
+      </div>
+    </section>
+
+    <!-- CARTE -->
+    <section class="section-vue" id="vueCarte">
+      <div class="entete-section">
+        <h1>Carte de la région</h1>
+        <p>Localisation des affaires, avis de recherche, objets volés et postes de police.</p>
+      </div>
+
+      <div class="filtres-carte">
+        <label><input type="checkbox" id="filtrePostes" checked> Postes de police</label>
+        <label><input type="checkbox" id="filtreAffaires" checked> Affaires</label>
+        <label><input type="checkbox" id="filtreAvis" checked> Avis de recherche</label>
+        <label><input type="checkbox" id="filtreObjets" checked> Objets volés</label>
+        <label><input type="checkbox" id="filtreAgents" checked> Agents actifs (en direct)</label>
+        <label><input type="checkbox" id="filtreCamerasIpCarte" checked> Caméras IP</label>
+        <label><input type="checkbox" id="filtreChaleur"> 🔥 Carte de chaleur</label>
+        <button type="button" class="bouton-action" id="btnCentrerPosition">📍 Centrer sur ma position</button>
+      </div>
+
+      <div class="barre-outils-sig">
+        <button type="button" class="bouton-action" id="btnActiverRecherche">🔍 Rechercher dans un rayon</button>
+        <button type="button" class="bouton-action" id="btnActiverItineraire">🧭 Calculer un itinéraire</button>
+        <button type="button" class="bouton-action" id="btnExporterGeojson">⬇ Exporter GeoJSON</button>
+        <button type="button" class="bouton-action" id="btnExporterKml">⬇ Exporter KML</button>
+        <label class="bouton-action" style="cursor:pointer;">
+          ⬆ Importer GeoJSON (zones)
+          <input type="file" id="inputImporterGeojson" accept=".geojson,.json" hidden>
+        </label>
+        <input type="text" id="numeroTelecom" placeholder="Numéro de téléphone" style="width:160px;">
+        <button type="button" class="bouton-action" id="btnLocaliserNumero">📡 Localiser via opérateur</button>
+      </div>
+      <div id="statutOutilSig" class="statut-partage"></div>
+
+      <div id="carteInteractive" class="carte-conteneur bezel-ecran"></div>
+
+      <div id="resultatsRechercheSpatiale"></div>
+
+      <div class="legende-carte">
+        <span><i class="pastille-legende" style="background:#3f7fb0"></i> Poste</span>
+        <span><i class="pastille-legende" style="background:#c9a227"></i> Affaire en cours</span>
+        <span><i class="pastille-legende" style="background:#4c9a63"></i> Affaire résolue</span>
+        <span><i class="pastille-legende" style="background:#b1463f"></i> Avis actif</span>
+        <span><i class="pastille-legende" style="background:#7fb4dd"></i> Objet recherché</span>
+        <span><i class="pastille-legende pastille-agent" style="background:#4ade80"></i> Agent actif (en direct)</span>
+        <span><i class="pastille-legende" style="background:#e3c15c"></i> Caméra IP</span>
+      </div>
+
+      <h3 style="margin-top:24px;">Zones / secteurs dessinés</h3>
+      <p class="aide-carte">Utilisez les outils de dessin en haut à gauche de la carte (polygone ou cercle) pour créer une zone, puis donnez-lui un nom.</p>
+      <div id="listeZones"></div>
+    </section>
+
+    <!-- SUPERVISION CAMERA -->
+    <section class="section-vue" id="vueSupervision">
+      <div class="entete-section">
+        <h1>Supervision caméra</h1>
+        <p>Agents diffusant leur caméra en direct, et caméras IP connectées.</p>
+      </div>
+
+      <h3>Agents en direct</h3>
+      <div id="listeDiffuseurs"></div>
+
+      <div class="bloc-formulaire" id="ongletCamerasIp" hidden>
+        <h3>Ajouter une caméra IP</h3>
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label>Mode</label>
+            <select id="camMode">
+              <option value="ipwebcam">App "IP Webcam" (Android) — simple</option>
+              <option value="personnalise">URL personnalisée (autre caméra)</option>
+            </select>
+          </div>
+          <div class="champ"><label>Nom</label><input type="text" id="camNom" placeholder="ex. Téléphone Agent Moussa"></div>
+
+          <!-- Mode IP Webcam : juste l'adresse IP + le port -->
+          <div class="champ" id="champIpWebcamAdresse"><label>Adresse IP du téléphone</label><input type="text" id="camAdresseIp" placeholder="ex. 192.168.1.42"></div>
+          <div class="champ" id="champIpWebcamPort"><label>Port (visible dans l'app, en bas de l'écran)</label><input type="text" id="camPort" value="8080" placeholder="8080"></div>
+
+          <!-- Mode URL personnalisee -->
+          <div class="champ" id="champTypePersonnalise" hidden>
+            <label>Type de flux</label>
+            <select id="camType">
+              <option value="mjpeg">MJPEG / HTTP</option>
+              <option value="rtsp">RTSP (caméra professionnelle / NVR)</option>
+            </select>
+          </div>
+          <div class="champ pleine-largeur" id="champUrlPersonnalisee" hidden>
+            <label>URL du flux</label>
+            <input type="text" id="camUrl" placeholder="ex. http://192.168.1.50:8080/video ou rtsp://192.168.1.60:554/stream1">
+          </div>
+
+          <div class="champ"><label>Latitude (facultatif)</label><input type="text" id="camLatitude" placeholder="ex. 13.5137"></div>
+          <div class="champ"><label>Longitude (facultatif)</label><input type="text" id="camLongitude" placeholder="ex. 2.1098"></div>
+        </div>
+        <p class="aide-carte">Avec l'app "IP Webcam" : ouvrez l'app sur le téléphone, appuyez sur "Démarrer le serveur", et l'adresse IP + le port s'affichent en bas de l'écran. Le téléphone et le serveur doivent être sur le même réseau Wi-Fi.</p>
+        <button class="bouton-action bouton-valider" id="btnAjouterCameraIp">Ajouter la caméra</button>
+      </div>
+
+      <h3>Caméras IP</h3>
+      <div id="listeCamerasIp"></div>
+
+      <div id="grilleFluxVideo" class="grille-video"></div>
+    </section>
+
+    <!-- RECONNAISSANCE FACIALE -->
+    <section class="section-vue" id="vueReconnaissance">
+      <div class="entete-section">
+        <h1>Reconnaissance faciale</h1>
+        <p>Comparez une photo aux avis de recherche enregistrés. Résultat indicatif : toujours à vérifier manuellement.</p>
+      </div>
+
+      <div class="avertissement-mdp">
+        ⚠️ Aucune correspondance affichée ici n'est une certitude. Ces résultats sont des pistes à vérifier
+        par un agent avant toute décision ou action. Aucune photo n'est envoyée à un service extérieur :
+        l'analyse se fait entièrement dans ce navigateur.
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Photo à analyser</h3>
+        <div class="grille-formulaire">
+          <div class="champ pleine-largeur"><label>Choisir une photo</label><input type="file" id="inputPhotoRecherche" accept="image/*"></div>
+          <div class="champ pleine-largeur">
+            <button type="button" class="bouton-action" id="btnCapturerPhotoRecherche">📷 Prendre une photo avec la caméra</button>
+          </div>
+        </div>
+        <img id="apercuPhotoRecherche" hidden style="max-width:200px;border-radius:8px;margin-top:10px;border:1px solid var(--bordure);">
+      </div>
+
+      <div id="statutRechercheFaciale" class="statut-partage"></div>
+      <div id="resultatsRechercheFaciale"></div>
+    </section>
+
+    <!-- ASSISTANT IA -->
+    <section class="section-vue" id="vueAssistant">
+      <div class="entete-section entete-assistant">
+        <div>
+          <h1>Assistant IA</h1>
+          <p>Posez une question, ou demandez une action : "ouvre une affaire pour...", "ajoute une note à AFF-2026-0003", "marque AFF-2026-0001 comme résolue". Les actions sensibles (suppression) demandent toujours une confirmation.</p>
+        </div>
+        <svg class="badge-ia-reseau" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+          <g class="lignes-reseau" stroke="#3f7fb0" stroke-width="1" opacity="0.6">
+            <line x1="80" y1="80" x2="20" y2="30"></line>
+            <line x1="80" y1="80" x2="140" y2="30"></line>
+            <line x1="80" y1="80" x2="20" y2="130"></line>
+            <line x1="80" y1="80" x2="140" y2="130"></line>
+            <line x1="80" y1="80" x2="80" y2="10"></line>
+            <line x1="80" y1="80" x2="80" y2="150"></line>
+            <line x1="80" y1="80" x2="10" y2="80"></line>
+            <line x1="80" y1="80" x2="150" y2="80"></line>
+          </g>
+          <g class="noeuds-reseau" fill="#7fb4dd">
+            <circle cx="20" cy="30" r="3"></circle>
+            <circle cx="140" cy="30" r="3"></circle>
+            <circle cx="20" cy="130" r="3"></circle>
+            <circle cx="140" cy="130" r="3"></circle>
+            <circle cx="80" cy="10" r="3"></circle>
+            <circle cx="80" cy="150" r="3"></circle>
+            <circle cx="10" cy="80" r="3"></circle>
+            <circle cx="150" cy="80" r="3"></circle>
+          </g>
+          <polygon points="80,45 115,80 80,115 45,80" fill="none" stroke="#c9a227" stroke-width="2" class="losange-ia"></polygon>
+          <text x="80" y="88" text-anchor="middle" font-size="20" font-weight="700" fill="#e3c15c" font-family="Inter, sans-serif">IA</text>
+        </svg>
+      </div>
+
+      <div id="avertissementAssistant" class="avertissement-mdp" hidden>
+        L'assistant IA n'est pas encore configuré. Ajoutez une clé <code>ANTHROPIC_API_KEY</code>
+        dans le fichier <code>.env</code> du serveur puis redémarrez-le pour l'activer.
+      </div>
+
+      <div class="bloc-formulaire">
+        <div class="champ pleine-largeur">
+          <label>Votre question</label>
+          <textarea id="assistantQuestion" rows="3" placeholder="Ex : Combien d'affaires sont encore en cours ? Résume les avis de recherche actifs."></textarea>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnPoserQuestion">Envoyer</button>
+      </div>
+
+      <div id="reponseAssistant" class="carte-item" hidden></div>
+    </section>
+
+    <!-- POSTES / COMMISSARIATS -->
+    <section class="section-vue" id="vuePostes">
+      <div class="entete-section">
+        <h1>Postes / Commissariats</h1>
+        <p>Gestion des différents postes de police du système.</p>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Ajouter un poste</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label>Nom du poste</label><input type="text" id="posteNom"></div>
+          <div class="champ"><label>Ville</label><input type="text" id="posteVille"></div>
+          <div class="champ"><label>Latitude (facultatif)</label><input type="text" id="posteLatitude" placeholder="ex. 13.5137"></div>
+          <div class="champ"><label>Longitude (facultatif)</label><input type="text" id="posteLongitude" placeholder="ex. 2.1098"></div>
+          <div class="champ pleine-largeur">
+            <button type="button" class="bouton-action" id="btnLocaliserPoste" onclick="localiserAppareil('posteLatitude','posteLongitude','btnLocaliserPoste')">📍 Utiliser ma position actuelle</button>
+          </div>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnAjouterPoste">Ajouter le poste</button>
+      </div>
+
+      <div id="listePostes"></div>
+    </section>
+
+    <!-- AFFAIRES -->
+    <section class="section-vue" id="vueAffaires">
+      <div class="entete-section">
+        <h1>Affaires</h1>
+        <p>Dossiers ouverts par les services de police.</p>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Ouvrir une nouvelle affaire</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label>Titre</label><input type="text" id="affTitre"></div>
+          <div class="champ"><label>Date d'ouverture</label><input type="date" id="affDate"></div>
+          <div class="champ">
+            <label>Catégorie</label>
+            <select id="affCategorie">
+              <option value="vol">Vol</option>
+              <option value="agression">Agression</option>
+              <option value="fraude">Fraude</option>
+              <option value="cambriolage">Cambriolage</option>
+              <option value="disparition">Disparition</option>
+              <option value="trafic">Trafic</option>
+              <option value="autre" selected>Autre</option>
+            </select>
+          </div>
+          <div class="champ pleine-largeur"><label>Description</label><textarea id="affDescription" rows="2"></textarea></div>
+          <div class="champ pleine-largeur"><label>Lieu (nom du quartier/ville)</label><input type="text" id="affLieu"></div>
+          <div class="champ"><label>Latitude (facultatif)</label><input type="text" id="affLatitude" placeholder="ex. 13.5137"></div>
+          <div class="champ"><label>Longitude (facultatif)</label><input type="text" id="affLongitude" placeholder="ex. 2.1098"></div>
+          <div class="champ pleine-largeur">
+            <button type="button" class="bouton-action" id="btnLocaliserAffaire" onclick="localiserAppareil('affLatitude','affLongitude','btnLocaliserAffaire')">📍 Utiliser ma position actuelle</button>
+          </div>
+        </div>
+        <p class="aide-carte">Astuce : sur Google Maps, faites un clic droit à l'endroit voulu puis cliquez sur les coordonnées affichées pour les copier.</p>
+        <button class="bouton-action bouton-valider" id="btnAjouterAffaire">Ouvrir l'affaire</button>
+      </div>
+
+      <div class="barre-recherche">
+        <input type="text" id="rechercheAffaires" placeholder="Rechercher par titre, description ou numéro de dossier...">
+        <button class="bouton-action" id="btnRechercherAffaires">Rechercher</button>
+        <button class="bouton-action" id="btnReinitAffaires">Réinitialiser</button>
+        <button class="bouton-action" id="btnExporterAffairesPdf">Exporter en PDF</button>
+        <button class="bouton-action" id="btnToggleFiltres">Filtres avancés</button>
+      </div>
+
+      <div id="panneauFiltresAvances" class="bloc-formulaire" hidden>
+        <div class="grille-formulaire">
+          <div class="champ"><label>Statut</label>
+            <select id="filtreStatut">
+              <option value="">Tous</option>
+              <option value="en cours">En cours</option>
+              <option value="resolu">Résolu</option>
+              <option value="classe sans suite">Classé sans suite</option>
+            </select>
+          </div>
+          <div class="champ"><label>Catégorie</label>
+            <select id="filtreCategorie">
+              <option value="">Toutes</option>
+              <option value="vol">Vol</option>
+              <option value="agression">Agression</option>
+              <option value="fraude">Fraude</option>
+              <option value="cambriolage">Cambriolage</option>
+              <option value="disparition">Disparition</option>
+              <option value="trafic">Trafic</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+          <div class="champ"><label>Poste</label><select id="filtrePosteAffaires"><option value="">Tous</option></select></div>
+          <div class="champ"><label>Officier assigné</label><select id="filtreOfficier"><option value="">Tous</option></select></div>
+          <div class="champ"><label>Date d'ouverture, à partir du</label><input type="date" id="filtreDateDebut"></div>
+          <div class="champ"><label>Date d'ouverture, jusqu'au</label><input type="date" id="filtreDateFin"></div>
+          <div class="champ"><label><input type="checkbox" id="filtreMesAffaires" style="width:auto"> Uniquement mes affaires assignées</label></div>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnAppliquerFiltres">Appliquer les filtres</button>
+      </div>
+
+      <div id="listeAffaires"></div>
+    </section>
+
+    <!-- AVIS DE RECHERCHE -->
+    <section class="section-vue" id="vueAvis">
+      <div class="entete-section">
+        <h1>Avis de recherche</h1>
+        <p>Personnes recherchées activement.</p>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Publier un avis de recherche</h3>
+        <form id="formAvis" enctype="multipart/form-data">
+          <div class="grille-formulaire">
+            <div class="champ"><label>Nom</label><input type="text" id="avisNom" required></div>
+            <div class="champ"><label>Localisation du signalement</label><input type="text" id="avisLocalisation"></div>
+            <div class="champ pleine-largeur"><label>Description physique</label><textarea id="avisDescPhysique" rows="2"></textarea></div>
+            <div class="champ pleine-largeur"><label>Motif de recherche</label><input type="text" id="avisMotif"></div>
+            <div class="champ"><label>Latitude (facultatif)</label><input type="text" id="avisLatitude" placeholder="ex. 13.5137"></div>
+            <div class="champ"><label>Longitude (facultatif)</label><input type="text" id="avisLongitude" placeholder="ex. 2.1098"></div>
+            <div class="champ"><label>Lier à une affaire (facultatif)</label><select id="avisAffaireId"><option value="">Aucune</option></select></div>
+            <div class="champ"><label><input type="checkbox" id="avisPriorite" style="width:auto"> ⚠️ Marquer comme prioritaire / dangereux</label></div>
+            <div class="champ pleine-largeur">
+              <button type="button" class="bouton-action" id="btnLocaliserAvis" onclick="localiserAppareil('avisLatitude','avisLongitude','btnLocaliserAvis')">📍 Utiliser ma position actuelle</button>
+            </div>
+            <div class="champ pleine-largeur"><label>Photo (JPG, PNG ou WEBP, 5 Mo max)</label><input type="file" id="avisPhoto" accept="image/jpeg,image/png,image/webp"></div>
+            <div class="champ pleine-largeur" id="statutAnalyseVisageAvis" style="font-size:12px;color:var(--texte-att);"></div>
+          </div>
+          <button type="submit" class="bouton-action bouton-valider">Publier l'avis</button>
+        </form>
+      </div>
+
+      <div id="listeAvis"></div>
+    </section>
+
+    <!-- OBJETS VOLES -->
+    <section class="section-vue" id="vueObjets">
+      <div class="entete-section">
+        <h1>Objets volés</h1>
+        <p>Objets déclarés volés et en recherche.</p>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Déclarer un objet volé</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label>Type d'objet</label><input type="text" id="objType"></div>
+          <div class="champ"><label>Date du vol</label><input type="date" id="objDate"></div>
+          <div class="champ pleine-largeur"><label>Lieu du vol</label><input type="text" id="objLieu"></div>
+          <div class="champ pleine-largeur"><label>Description</label><textarea id="objDescription" rows="2"></textarea></div>
+          <div class="champ"><label>Latitude (facultatif)</label><input type="text" id="objLatitude" placeholder="ex. 13.5137"></div>
+          <div class="champ"><label>Longitude (facultatif)</label><input type="text" id="objLongitude" placeholder="ex. 2.1098"></div>
+          <div class="champ"><label>Lier à une affaire (facultatif)</label><select id="objAffaireId"><option value="">Aucune</option></select></div>
+          <div class="champ pleine-largeur">
+            <button type="button" class="bouton-action" id="btnLocaliserObjet" onclick="localiserAppareil('objLatitude','objLongitude','btnLocaliserObjet')">📍 Utiliser ma position actuelle</button>
+          </div>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnAjouterObjet">Déclarer l'objet</button>
+      </div>
+
+      <div id="listeObjets"></div>
+    </section>
+
+    <!-- UTILISATEURS (admin) -->
+    <section class="section-vue" id="vueUtilisateurs">
+      <div class="entete-section">
+        <h1>Comptes utilisateurs</h1>
+        <p>Gestion des accès au système (réservé aux administrateurs).</p>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Créer un compte</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label>Identifiant</label><input type="text" id="uxIdentifiant"></div>
+          <div class="champ"><label>Mot de passe (min. 8 caractères)</label><input type="password" id="uxMotDePasse"></div>
+          <div class="champ"><label>Nom complet</label><input type="text" id="uxNomComplet"></div>
+          <div class="champ"><label>Grade</label><input type="text" id="uxGrade"></div>
+          <div class="champ">
+            <label>Rôle</label>
+            <select id="uxRole">
+              <option value="officier">Officier</option>
+              <option value="admin">Administrateur</option>
+            </select>
+          </div>
+          <div class="champ">
+            <label>Poste / Commissariat</label>
+            <select id="uxPoste"></select>
+          </div>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnCreerUtilisateur">Créer le compte</button>
+      </div>
+
+      <div class="bloc-formulaire">
+        <h3>Création en masse (plusieurs agents à la fois)</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label>Poste / Commissariat pour tous ces agents</label><select id="uxLotPoste"></select></div>
+          <div class="champ pleine-largeur">
+            <label>Un agent par ligne, au format : identifiant, nom complet, grade</label>
+            <textarea id="uxLotTexte" rows="5" placeholder="moussa.i, Moussa Ibrahim, Brigadier&#10;fatima.a, Fatima Abdou, Officier de police"></textarea>
+          </div>
+        </div>
+        <button class="bouton-action bouton-valider" id="btnCreerLotUtilisateurs">Créer tous ces comptes</button>
+        <div id="resultatsLotUtilisateurs" style="margin-top:14px;"></div>
+      </div>
+
+      <div id="listeUtilisateurs"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- CHANGEMENT DE MOT DE PASSE OBLIGATOIRE (premiere connexion) -->
+<div id="modaleMotDePasseObligatoire" class="fond-modale" hidden>
+  <div class="contenu-modale bezel-ecran">
+    <h2 style="margin-top:0;">🔒 Changement de mot de passe requis</h2>
+    <p class="detail">C'est votre première connexion (ou un administrateur a réinitialisé votre compte).
+    Vous devez choisir un nouveau mot de passe avant de continuer.</p>
+    <div class="champ"><label>Mot de passe actuel</label><input type="password" id="mdpObligatoireAncien"></div>
+    <div class="champ"><label>Nouveau mot de passe (min. 8 caractères)</label><input type="password" id="mdpObligatoireNouveau"></div>
+    <div class="champ"><label>Confirmer le nouveau mot de passe</label><input type="password" id="mdpObligatoireConfirmation"></div>
+    <p id="erreurMdpObligatoire" class="message-erreur" hidden></p>
+    <button class="bouton-action bouton-valider" id="btnValiderMdpObligatoire" style="width:100%;">Valider et continuer</button>
+  </div>
+</div>
+
+<!-- BANDEAU APPEL ENTRANT (visible en permanence, par-dessus tout) -->
+<div id="bandeauAppelEntrant" class="bandeau-appel-entrant" hidden>
+  <span id="texteAppelEntrant"></span>
+  <button class="bouton-action bouton-valider" id="btnRepondreAppel">✅ Répondre</button>
+  <button class="bouton-action" id="btnIgnorerAppel">Ignorer</button>
+</div>
+
+<!-- PANNEAU DE SELECTION DES AGENTS A PROXIMITE (suite a une alerte) -->
+<div id="panneauAlerte" class="fond-modale" hidden>
+  <div class="contenu-modale bezel-ecran">
+    <button class="bouton-fermer-modale" onclick="document.getElementById('panneauAlerte').hidden = true;">✕</button>
+    <h2 style="margin-top:0;">🚨 Agents à proximité</h2>
+    <div id="listeAgentsProches"></div>
+    <button class="bouton-action bouton-valider" id="btnAppelerSelection" style="margin-top:14px;">📞 Appeler la sélection (audio groupé)</button>
+  </div>
+</div>
+
+<!-- PANNEAU D'APPEL ACTIF (persistant tant que l'appel dure) -->
+<div id="panneauAppelActif" class="panneau-appel-actif" hidden>
+  <div class="entete-appel-actif">📞 Appel de groupe en cours</div>
+  <div id="listeParticipantsAppel" class="detail"></div>
+  <button class="bouton-action" id="btnQuitterAppel" style="margin-top:8px;">Quitter l'appel</button>
+  <div id="grilleAudioAppel" hidden></div>
+</div>
+
+<!-- MODALE DE DETAIL D'AFFAIRE -->
+<div id="modaleAffaire" class="fond-modale" hidden>
+  <div class="contenu-modale bezel-ecran">
+    <button class="bouton-fermer-modale" id="btnFermerModale">✕</button>
+    <div id="corpsModaleAffaire"></div>
+  </div>
+</div>
+
+<script src="/js/effets.js"></script>
+<script src="/js/camera.js"></script>
+<script src="/js/appels.js"></script>
+<script src="/js/reconnaissance.js"></script>
+<script src="/js/app.js"></script>
+<script>demarrerFondCode("fondCode", { opacite: 0.05 });</script>
+</body>
+</html>

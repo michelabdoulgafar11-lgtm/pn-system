@@ -1,0 +1,66 @@
+{
+  "postes": [
+    {
+      "id": 1,
+      "nom": "Commissariat Central",
+      "ville": "Niamey",
+      "actif": 1,
+      "date_creation": "2026-10-01T21:12:14.402Z"
+    }
+  ],
+  "utilisateurs": [
+    {
+      "id": 1,
+      "identifiant": "admin",
+      "mot_de_passe_hash": "$2a$12$jN85zhBbkd50xJAA0W6EOub74VoJeY24l7S/sY9JtYHmA2VK1Zk7G",
+      "nom_complet": "Administrateur Systeme",
+      "grade": "N/A",
+      "role": "admin",
+      "poste_id": 1,
+      "actif": 1,
+      "doit_changer_mot_de_passe": true,
+      "date_creation": "2026-10-01T21:12:15.361Z"
+    }
+  ],
+  "affaires": [],
+  "notes_affaires": [],
+  "avis_recherche": [],
+  "objets_voles": [],
+  "cameras_ip": [],
+  "zones": [],
+  "journal_audit": [
+    {
+      "id": 1,
+      "utilisateur_id": 1,
+      "action": "CONNEXION",
+      "details": "Connexion reussie",
+      "date_action": "2026-10-01T21:12:59.937Z"
+    },
+    {
+      "id": 2,
+      "utilisateur_id": 1,
+      "action": "CONNEXION",
+      "details": "Connexion reussie",
+      "date_action": "2026-10-01T21:13:29.361Z"
+    },
+    {
+      "id": 3,
+      "utilisateur_id": 1,
+      "action": "CONNEXION",
+      "details": "Connexion reussie",
+      "date_action": "2026-10-01T21:13:51.001Z"
+    }
+  ],
+  "compteurs": {
+    "postes": 1,
+    "utilisateurs": 1,
+    "affaires": 0,
+    "notes_affaires": 0,
+    "avis_recherche": 0,
+    "objets_voles": 0,
+    "cameras_ip": 0,
+    "zones": 0,
+    "pieces_jointes": 0,
+    "journal_audit": 3
+  }
+}
