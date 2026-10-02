@@ -10,8 +10,14 @@ const { demarrerSignalisation } = require("./signalisation");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Render (et la plupart des hebergeurs) passe par un proxy HTTPS.
+// Sans cette ligne, le cookie de session "secure" n'est jamais envoye
+// et l'utilisateur est renvoye vers la page de connexion (erreur 401 sur /moi).
+app.set("trust proxy", 1);
+
 // Genere une cle de session au demarrage si aucune n'est fournie dans .env
-// (en production, definissez SESSION_SECRET dans le fichier .env pour garder les sessions valides entre redemarrages)
+// (en production, definissez SESSION_SECRET dans les variables d'environnement
+// pour garder les sessions valides entre redemarrages)
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 
 app.use(express.json({ limit: "5mb" }));
