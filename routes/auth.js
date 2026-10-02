@@ -79,7 +79,7 @@ router.post("/deconnexion", exigerConnexion, (req, res) => {
   positionsActives.retirer(idUtilisateur);
   journaliser(idUtilisateur, "DECONNEXION", null);
   req.session.destroy(() => {
-    res.clearCookie("connect.sid");
+  res.clearCookie("pn_session");
     res.json({ succes: true });
   });
 });

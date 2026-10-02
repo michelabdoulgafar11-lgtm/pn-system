@@ -44,6 +44,7 @@ async function initialiser() {
     configurerChangementMotDePasseObligatoire();
     if (utilisateurCourant.doitChangerMotDePasse) {
       document.getElementById("modaleMotDePasseObligatoire").hidden = false;
+      return; // on attend le changement de mot de passe avant de charger le reste
     }
 
     if (utilisateurCourant.role === "admin") {
@@ -1043,8 +1044,8 @@ function configurerChangementMotDePasseObligatoire() {
       return;
     }
 
-    utilisateurCourant.doitChangerMotDePasse = false;
-    document.getElementById("modaleMotDePasseObligatoire").hidden = true;
+        // Mot de passe change : on recharge la page pour charger tout le tableau de bord
+    window.location.reload();
   });
 }
 
